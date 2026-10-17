@@ -1,0 +1,8 @@
+{
+  "name": "ytb-downloader",
+  "private": true,
+  "scripts": {
+    "lint": "npm --prefix frontend run lint && cd backend && uv run ruff check . && uv run ruff format --check .",
+    "lint:fix": "npm --prefix frontend run lint:fix && cd backend && uv run ruff check --fix . && uv run ruff format ."
+  }
+}

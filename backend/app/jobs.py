@@ -5,6 +5,8 @@ from uuid import uuid4
 
 from pydantic import BaseModel
 
+from . import store
+
 if TYPE_CHECKING:
     from .engine import Downloader
 
@@ -32,7 +34,23 @@ class DownloadJob(BaseModel):
     eta_secs: float | None = None
 
 
-_jobs: dict[str, DownloadJob] = {}
+class _JobsCompat(dict[str, DownloadJob]):
+    def clear(self) -> None:
+        super().clear()
+        store.clear_all()
+
+
+_jobs: _JobsCompat = _JobsCompat()
+
+
+def _sync_cached(fresh: DownloadJob) -> DownloadJob:
+    existing = _jobs.get(fresh.id)
+    if existing is None:
+        _jobs[fresh.id] = fresh
+        return fresh
+    for field in type(fresh).model_fields:
+        setattr(existing, field, getattr(fresh, field))
+    return existing
 
 
 def create_job(data: DownloadCreate) -> DownloadJob:
@@ -45,20 +63,39 @@ def create_job(data: DownloadCreate) -> DownloadJob:
         error=None,
     )
     _jobs[job.id] = job
+    store.insert_job(job)
     return job
 
 
 def get_job(job_id: str) -> DownloadJob | None:
-    return _jobs.get(job_id)
+    fresh = store.get_job(job_id)
+    if fresh is None:
+        _jobs.pop(job_id, None)
+        return None
+    return _sync_cached(fresh)
+
+
+def list_jobs() -> list[DownloadJob]:
+    return [_sync_cached(job) for job in store.list_jobs()]
+
+
+def recover_incomplete() -> list[DownloadJob]:
+    return [
+        _sync_cached(job)
+        for job in store.mark_downloading_failed("server restarted while downloading")
+    ]
 
 
 def run_job(job_id: str, engine: Downloader | None = None) -> DownloadJob:
-    job = _jobs[job_id]
+    job = get_job(job_id)
+    if job is None:
+        raise KeyError(job_id)
     if engine is None:
         from .engine import YtDlpEngine
 
         engine = YtDlpEngine()
     job.status = "downloading"
+    store.save_job(job)
 
     def _on_progress(
         percent: float | None, speed: float | None, eta: float | None
@@ -66,6 +103,7 @@ def run_job(job_id: str, engine: Downloader | None = None) -> DownloadJob:
         job.progress_percent = percent
         job.speed_bps = speed
         job.eta_secs = eta
+        store.save_job(job)
 
     try:
         path = engine.download(
@@ -74,9 +112,11 @@ def run_job(job_id: str, engine: Downloader | None = None) -> DownloadJob:
     except Exception as exc:
         job.status = "failed"
         job.error = str(exc) or repr(exc)
+        store.save_job(job)
         return job
     job.status = "done"
     job.error = None
     job.file_path = str(path)
     job.progress_percent = 100.0
+    store.save_job(job)
     return job

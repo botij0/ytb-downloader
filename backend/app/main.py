@@ -9,7 +9,15 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from .engine import DOWNLOAD_DIR
-from .jobs import DownloadCreate, DownloadJob, create_job, get_job, run_job
+from .jobs import (
+    DownloadCreate,
+    DownloadJob,
+    create_job,
+    get_job,
+    list_jobs,
+    recover_incomplete,
+    run_job,
+)
 from .metadata import MetadataUnavailable, VideoMetadata, fetch_metadata
 from .urls import normalize_youtube_url
 
@@ -21,6 +29,7 @@ class HealthResponse(BaseModel):
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    recover_incomplete()
     yield
 
 
@@ -52,6 +61,11 @@ def post_download(
     )
     background_tasks.add_task(run_job, job.id)
     return job
+
+
+@app.get("/api/downloads")
+def list_downloads() -> list[DownloadJob]:
+    return list_jobs()
 
 
 @app.get("/api/downloads/{job_id}")

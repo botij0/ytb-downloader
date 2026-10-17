@@ -17,6 +17,13 @@ export type DownloadJob = {
   file_path: string | null;
 };
 
+export type VideoMetadata = {
+  title: string;
+  duration_secs: number;
+  thumbnail_url: string;
+  uploader: string;
+};
+
 const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8000";
 
 export async function getHealth(): Promise<HealthResponse> {
@@ -33,6 +40,13 @@ export async function createDownload(
     url,
     kind,
     quality,
+  });
+  return response.data;
+}
+
+export async function getMetadata(url: string): Promise<VideoMetadata> {
+  const response = await axios.get<VideoMetadata>(`${API_BASE}/api/metadata`, {
+    params: { url },
   });
   return response.data;
 }

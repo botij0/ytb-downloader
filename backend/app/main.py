@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from .engine import DOWNLOAD_DIR
 from .jobs import DownloadCreate, DownloadJob, create_job, get_job, run_job
+from .metadata import MetadataUnavailable, VideoMetadata, fetch_metadata
 from .urls import normalize_youtube_url
 
 
@@ -74,3 +75,13 @@ def get_download_file(job_id: str) -> FileResponse:
     response = FileResponse(path)
     response.headers["content-disposition"] = f'attachment; filename="{path.name}"'
     return response
+
+
+@app.get("/api/metadata")
+def get_metadata(url: str) -> VideoMetadata:
+    try:
+        return fetch_metadata(url)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except MetadataUnavailable as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc

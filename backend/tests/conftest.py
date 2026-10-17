@@ -12,7 +12,7 @@ class FakeEngine:
     def __init__(self, file_path: Path) -> None:
         self.file_path = file_path
 
-    def download(self, url: str, kind: str) -> Path:
+    def download(self, url: str, kind: str, quality: str = "best") -> Path:
         self.file_path.write_bytes(b"fake-download")
         return self.file_path
 

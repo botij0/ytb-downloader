@@ -6,6 +6,8 @@ export type HealthResponse = {
 
 export type DownloadKind = "video" | "audio";
 
+export type VideoQuality = "best" | "1080p" | "720p" | "480p";
+
 export type DownloadJob = {
   id: string;
   url: string;
@@ -25,10 +27,12 @@ export async function getHealth(): Promise<HealthResponse> {
 export async function createDownload(
   url: string,
   kind: DownloadKind,
+  quality: VideoQuality = "best",
 ): Promise<DownloadJob> {
   const response = await axios.post<DownloadJob>(`${API_BASE}/api/downloads`, {
     url,
     kind,
+    quality,
   });
   return response.data;
 }

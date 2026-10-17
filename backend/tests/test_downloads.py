@@ -9,12 +9,12 @@ from app.jobs import DownloadCreate, create_job, get_job, run_job
 def test_create_video_job(client: TestClient) -> None:
     response = client.post(
         "/api/downloads",
-        json={"url": "https://example.com/video", "kind": "video"},
+        json={"url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ", "kind": "video"},
     )
 
     assert response.status_code == 200
     body = response.json()
-    assert body["url"] == "https://example.com/video"
+    assert body["url"] == "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
     assert body["kind"] == "video"
     assert body["status"] == "queued"
     assert body["id"]
@@ -23,12 +23,12 @@ def test_create_video_job(client: TestClient) -> None:
 def test_create_audio_job(client: TestClient) -> None:
     response = client.post(
         "/api/downloads",
-        json={"url": "https://example.com/audio", "kind": "audio"},
+        json={"url": "https://www.youtube.com/watch?v=aqz-KE-bpKQ", "kind": "audio"},
     )
 
     assert response.status_code == 200
     body = response.json()
-    assert body["url"] == "https://example.com/audio"
+    assert body["url"] == "https://www.youtube.com/watch?v=aqz-KE-bpKQ"
     assert body["kind"] == "audio"
     assert body["status"] == "queued"
     assert body["id"]
@@ -37,7 +37,7 @@ def test_create_audio_job(client: TestClient) -> None:
 def test_job_transitions_to_done(client: TestClient) -> None:
     created = client.post(
         "/api/downloads",
-        json={"url": "https://example.com/video", "kind": "video"},
+        json={"url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ", "kind": "video"},
     ).json()
 
     response = client.get(f"/api/downloads/{created['id']}")
@@ -54,7 +54,7 @@ def test_job_transitions_to_done(client: TestClient) -> None:
 def test_done_job_serves_file(client: TestClient) -> None:
     created = client.post(
         "/api/downloads",
-        json={"url": "https://example.com/video", "kind": "video"},
+        json={"url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ", "kind": "video"},
     ).json()
 
     response = client.get(f"/api/downloads/{created['id']}/file")
@@ -91,8 +91,8 @@ def test_get_unknown_job_file_returns_404(client: TestClient) -> None:
     [
         {},
         {"kind": "video"},
-        {"url": "https://example.com/video"},
-        {"url": "https://example.com/video", "kind": "clip"},
+        {"url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"},
+        {"url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ", "kind": "clip"},
         {"url": 123, "kind": "video"},
     ],
 )
@@ -106,7 +106,7 @@ def test_run_job_failed_path(client: TestClient) -> None:
     job = create_job(DownloadCreate(url="https://example.com/broken", kind="video"))
 
     class RaisingEngine:
-        def download(self, url: str, kind: str) -> Path:
+        def download(self, url: str, kind: str, quality: str = "best") -> Path:
             raise RuntimeError("boom")
 
     result = run_job(job.id, engine=RaisingEngine())
@@ -130,7 +130,7 @@ def test_run_job_done_path(tmp_path: Path) -> None:
     target = tmp_path / "out.bin"
 
     class WritingEngine:
-        def download(self, url: str, kind: str) -> Path:
+        def download(self, url: str, kind: str, quality: str = "best") -> Path:
             target.write_bytes(b"local-bytes")
             return target
 

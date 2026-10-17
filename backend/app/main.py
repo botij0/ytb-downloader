@@ -62,7 +62,7 @@ def post_download(payload: DownloadCreate) -> DownloadJob:
         DownloadCreate(url=canonical, kind=payload.kind, quality=payload.quality)
     )
     enqueue(job.id)
-    return job
+    return job.model_copy()
 
 
 @app.get("/api/downloads")

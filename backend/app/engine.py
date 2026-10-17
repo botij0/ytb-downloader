@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol
 
@@ -10,16 +11,6 @@ if TYPE_CHECKING:
     from .jobs import DownloadKind, VideoQuality
 
 DOWNLOAD_DIR = Path(os.environ.get("YTB_DOWNLOAD_DIR", "./downloads"))
-
-_OPTIONS_BY_KIND = {
-    "video": {
-        "format": "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/b",
-        "merge_output_format": "mp4",
-    },
-    "audio": {
-        "format": "ba[ext=m4a]/ba",
-    },
-}
 
 
 def format_for(kind: DownloadKind, quality: VideoQuality) -> str:
@@ -34,21 +25,58 @@ def format_for(kind: DownloadKind, quality: VideoQuality) -> str:
     return "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/b"
 
 
+ProgressHook = Callable[[float | None, float | None, float | None], None]
+
+
 class Downloader(Protocol):
     def download(
-        self, url: str, kind: DownloadKind, quality: VideoQuality = "best"
+        self,
+        url: str,
+        kind: DownloadKind,
+        quality: VideoQuality = "best",
+        on_progress: ProgressHook | None = None,
     ) -> Path: ...
 
 
 class YtDlpEngine:
     def download(
-        self, url: str, kind: DownloadKind, quality: VideoQuality = "best"
+        self,
+        url: str,
+        kind: DownloadKind,
+        quality: VideoQuality = "best",
+        on_progress: ProgressHook | None = None,
     ) -> Path:
         DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+        def _progress_hook(status: dict) -> None:
+            if on_progress is None:
+                return
+            state = status.get("status")
+            speed = status.get("speed")
+            eta = status.get("eta")
+            speed_value = float(speed) if speed is not None else None
+            eta_value = float(eta) if eta is not None else None
+            if state == "finished":
+                on_progress(100.0, speed_value, eta_value)
+                return
+            if state != "downloading":
+                return
+            downloaded = status.get("downloaded_bytes", status.get("downloaded"))
+            total = status.get("total_bytes", status.get("total_bytes_estimate"))
+            percent: float | None = None
+            if (
+                isinstance(downloaded, (int, float))
+                and isinstance(total, (int, float))
+                and total > 0
+            ):
+                percent = min(100.0, max(0.0, float(downloaded) / float(total) * 100.0))
+            on_progress(percent, speed_value, eta_value)
+
         opts = {
             "outtmpl": str(DOWNLOAD_DIR / "%(title)s [%(id)s].%(ext)s"),
             "noplaylist": True,
             "format": format_for(kind, quality),
+            "progress_hooks": [_progress_hook],
         }
         if kind == "video":
             opts["merge_output_format"] = "mp4"

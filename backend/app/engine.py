@@ -10,6 +10,16 @@ if TYPE_CHECKING:
 
 DOWNLOAD_DIR = Path(__file__).resolve().parent / "downloads"
 
+_OPTIONS_BY_KIND = {
+    "video": {
+        "format": "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/b",
+        "merge_output_format": "mp4",
+    },
+    "audio": {
+        "format": "ba[ext=m4a]/ba",
+    },
+}
+
 
 class Downloader(Protocol):
     def download(self, url: str, kind: DownloadKind) -> Path: ...
@@ -17,14 +27,11 @@ class Downloader(Protocol):
 
 class YtDlpEngine:
     def download(self, url: str, kind: DownloadKind) -> Path:
-        if kind == "audio":
-            raise NotImplementedError("audio downloads arrive in issue #5")
         DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
         opts = {
-            "format": "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/b",
-            "merge_output_format": "mp4",
             "outtmpl": str(DOWNLOAD_DIR / "%(title)s [%(id)s].%(ext)s"),
             "noplaylist": True,
+            **_OPTIONS_BY_KIND[kind],
         }
         with yt_dlp.YoutubeDL(opts) as ydl:
             info = ydl.extract_info(url, download=True)

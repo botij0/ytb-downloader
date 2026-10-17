@@ -46,7 +46,9 @@ def post_download(
         canonical = normalize_youtube_url(payload.url)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    job = create_job(DownloadCreate(url=canonical, kind=payload.kind))
+    job = create_job(
+        DownloadCreate(url=canonical, kind=payload.kind, quality=payload.quality)
+    )
     background_tasks.add_task(run_job, job.id)
     return job
 

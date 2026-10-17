@@ -4,6 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.jobs import DownloadCreate, create_job, get_job, run_job
+from app.worker import wait_for
 
 
 def test_create_video_job(client: TestClient) -> None:
@@ -40,6 +41,7 @@ def test_job_transitions_to_done(client: TestClient) -> None:
         json={"url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ", "kind": "video"},
     ).json()
 
+    wait_for(created["id"], timeout=15.0)
     response = client.get(f"/api/downloads/{created['id']}")
 
     assert response.status_code == 200
@@ -57,6 +59,7 @@ def test_done_job_serves_file(client: TestClient) -> None:
         json={"url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ", "kind": "video"},
     ).json()
 
+    wait_for(created["id"], timeout=15.0)
     response = client.get(f"/api/downloads/{created['id']}/file")
 
     assert response.status_code == 200

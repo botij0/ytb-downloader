@@ -19,9 +19,11 @@ def enqueue(job_id: str) -> None:
     _work.put(job_id)
 
 
-def wait_for(job_id: str) -> None:
+def wait_for(job_id: str, timeout: float | None = None) -> None:
     with _ready:
-        _ready.wait_for(lambda: job_id in _finished)
+        finished = _ready.wait_for(lambda: job_id in _finished, timeout=timeout)
+        if not finished:
+            raise TimeoutError(f"timed out waiting for job {job_id}")
         _finished.discard(job_id)
 
 

@@ -19,7 +19,7 @@ from .jobs import (
 )
 from .metadata import MetadataUnavailable, VideoMetadata, fetch_metadata
 from .urls import normalize_youtube_url
-from .worker import enqueue, start_worker, stop_worker, wait_for
+from .worker import enqueue, start_worker, stop_worker
 
 
 class HealthResponse(BaseModel):
@@ -61,10 +61,8 @@ def post_download(payload: DownloadCreate) -> DownloadJob:
     job = create_job(
         DownloadCreate(url=canonical, kind=payload.kind, quality=payload.quality)
     )
-    queued = job.model_copy()
     enqueue(job.id)
-    wait_for(job.id)
-    return queued
+    return job
 
 
 @app.get("/api/downloads")

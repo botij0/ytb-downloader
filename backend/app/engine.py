@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol
 
@@ -8,7 +9,7 @@ import yt_dlp
 if TYPE_CHECKING:
     from .jobs import DownloadKind
 
-DOWNLOAD_DIR = Path(__file__).resolve().parent / "downloads"
+DOWNLOAD_DIR = Path(os.environ.get("YTB_DOWNLOAD_DIR", "./downloads"))
 
 _OPTIONS_BY_KIND = {
     "video": {

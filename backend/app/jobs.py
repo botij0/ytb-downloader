@@ -1,7 +1,12 @@
-from typing import Literal
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Literal
 from uuid import uuid4
 
 from pydantic import BaseModel
+
+if TYPE_CHECKING:
+    from .engine import Downloader
 
 JobStatus = Literal["queued", "downloading", "done", "failed"]
 DownloadKind = Literal["video", "audio"]
@@ -18,6 +23,7 @@ class DownloadJob(BaseModel):
     kind: DownloadKind
     status: JobStatus
     error: str | None = None
+    file_path: str | None = None
 
 
 _jobs: dict[str, DownloadJob] = {}
@@ -33,3 +39,22 @@ def create_job(data: DownloadCreate) -> DownloadJob:
 
 def get_job(job_id: str) -> DownloadJob | None:
     return _jobs.get(job_id)
+
+
+def run_job(job_id: str, engine: Downloader | None = None) -> DownloadJob:
+    job = _jobs[job_id]
+    if engine is None:
+        from .engine import YtDlpEngine
+
+        engine = YtDlpEngine()
+    job.status = "downloading"
+    try:
+        path = engine.download(job.url, job.kind)
+    except Exception as exc:
+        job.status = "failed"
+        job.error = str(exc) or repr(exc)
+        return job
+    job.status = "done"
+    job.error = None
+    job.file_path = str(path)
+    return job

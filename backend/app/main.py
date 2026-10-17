@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
+from .engine import DOWNLOAD_DIR
 from .jobs import DownloadCreate, DownloadJob, create_job, get_job, run_job
 
 
@@ -21,6 +22,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.on_event("startup")
+def ensure_download_dir() -> None:
+    DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 
 @app.get("/api/health")

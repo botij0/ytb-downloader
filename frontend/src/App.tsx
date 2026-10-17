@@ -34,6 +34,10 @@ export default function App() {
     }
     try {
       const data = await getMetadata(url);
+      if (data === null || data === undefined) {
+        setMetadata(null);
+        return;
+      }
       setMetadata(data);
     } catch {
       setMetadata(null);

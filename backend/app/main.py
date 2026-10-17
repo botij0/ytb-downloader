@@ -1,8 +1,10 @@
 from typing import Literal
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+
+from .jobs import DownloadCreate, DownloadJob, create_job, get_job
 
 
 class HealthResponse(BaseModel):
@@ -22,3 +24,16 @@ app.add_middleware(
 @app.get("/api/health")
 def get_health() -> HealthResponse:
     return HealthResponse(status="ok")
+
+
+@app.post("/api/downloads")
+def post_download(payload: DownloadCreate) -> DownloadJob:
+    return create_job(payload)
+
+
+@app.get("/api/downloads/{job_id}")
+def get_download(job_id: str) -> DownloadJob:
+    job = get_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="job not found")
+    return job

@@ -1,6 +1,6 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
-import type { DownloadJob, DownloadKind } from "./api";
+import type { DownloadJob, DownloadKind, VideoQuality } from "./api";
 import { createDownload, getHealth } from "./api";
 
 type ConnectionState = "checking" | "connected" | "disconnected";
@@ -9,6 +9,7 @@ export default function App() {
   const [connection, setConnection] = useState<ConnectionState>("checking");
   const [url, setUrl] = useState("");
   const [kind, setKind] = useState<DownloadKind>("video");
+  const [quality, setQuality] = useState<VideoQuality>("best");
   const [job, setJob] = useState<DownloadJob | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -25,7 +26,7 @@ export default function App() {
     setSubmitting(true);
     setError(null);
     try {
-      const created = await createDownload(url, kind);
+      const created = await createDownload(url, kind, quality);
       setJob(created);
     } catch (err) {
       setJob(null);
@@ -90,6 +91,17 @@ export default function App() {
             Audio
           </label>
         </fieldset>
+        <label htmlFor="quality">Quality</label>
+        <select
+          id="quality"
+          value={quality}
+          onChange={(event) => setQuality(event.target.value as VideoQuality)}
+        >
+          <option value="best">Best</option>
+          <option value="1080p">1080p</option>
+          <option value="720p">720p</option>
+          <option value="480p">480p</option>
+        </select>
         <button type="submit" disabled={submitting}>
           Download
         </button>

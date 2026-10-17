@@ -10,17 +10,20 @@ if TYPE_CHECKING:
 
 JobStatus = Literal["queued", "downloading", "done", "failed"]
 DownloadKind = Literal["video", "audio"]
+VideoQuality = Literal["best", "1080p", "720p", "480p"]
 
 
 class DownloadCreate(BaseModel):
     url: str
     kind: DownloadKind
+    quality: VideoQuality = "best"
 
 
 class DownloadJob(BaseModel):
     id: str
     url: str
     kind: DownloadKind
+    quality: VideoQuality = "best"
     status: JobStatus
     error: str | None = None
     file_path: str | None = None
@@ -31,7 +34,12 @@ _jobs: dict[str, DownloadJob] = {}
 
 def create_job(data: DownloadCreate) -> DownloadJob:
     job = DownloadJob(
-        id=uuid4().hex, url=data.url, kind=data.kind, status="queued", error=None
+        id=uuid4().hex,
+        url=data.url,
+        kind=data.kind,
+        quality=data.quality,
+        status="queued",
+        error=None,
     )
     _jobs[job.id] = job
     return job
@@ -49,7 +57,7 @@ def run_job(job_id: str, engine: Downloader | None = None) -> DownloadJob:
         engine = YtDlpEngine()
     job.status = "downloading"
     try:
-        path = engine.download(job.url, job.kind)
+        path = engine.download(job.url, job.kind, job.quality)
     except Exception as exc:
         job.status = "failed"
         job.error = str(exc) or repr(exc)

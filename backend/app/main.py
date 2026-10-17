@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from .engine import DOWNLOAD_DIR
 from .jobs import DownloadCreate, DownloadJob, create_job, get_job, run_job
+from .urls import normalize_youtube_url
 
 
 class HealthResponse(BaseModel):
@@ -41,7 +42,11 @@ def get_health() -> HealthResponse:
 def post_download(
     payload: DownloadCreate, background_tasks: BackgroundTasks
 ) -> DownloadJob:
-    job = create_job(payload)
+    try:
+        canonical = normalize_youtube_url(payload.url)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    job = create_job(DownloadCreate(url=canonical, kind=payload.kind))
     background_tasks.add_task(run_job, job.id)
     return job
 

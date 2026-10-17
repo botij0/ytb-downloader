@@ -15,6 +15,7 @@ export type DownloadJob = {
   status: "queued" | "downloading" | "done" | "failed";
   error: string | null;
   file_path: string | null;
+  progress_percent: number | null;
 };
 
 export type VideoMetadata = {
@@ -42,6 +43,15 @@ export async function createDownload(
     quality,
   });
   return response.data;
+}
+
+export async function getDownloads(): Promise<DownloadJob[]> {
+  const response = await axios.get<DownloadJob[]>(`${API_BASE}/api/downloads`);
+  return response.data;
+}
+
+export function getDownloadFileUrl(jobId: string): string {
+  return `${API_BASE}/api/downloads/${jobId}/file`;
 }
 
 export async function getMetadata(url: string): Promise<VideoMetadata> {

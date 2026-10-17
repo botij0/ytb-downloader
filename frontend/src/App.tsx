@@ -6,7 +6,13 @@ import type {
   VideoMetadata,
   VideoQuality,
 } from "./api";
-import { createDownload, getHealth, getMetadata } from "./api";
+import {
+  createDownload,
+  getDownloadFileUrl,
+  getDownloads,
+  getHealth,
+  getMetadata,
+} from "./api";
 
 type ConnectionState = "checking" | "connected" | "disconnected";
 
@@ -16,6 +22,7 @@ export default function App() {
   const [kind, setKind] = useState<DownloadKind>("video");
   const [quality, setQuality] = useState<VideoQuality>("best");
   const [job, setJob] = useState<DownloadJob | null>(null);
+  const [jobs, setJobs] = useState<DownloadJob[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [metadata, setMetadata] = useState<VideoMetadata | null>(null);
@@ -26,6 +33,24 @@ export default function App() {
       () => setConnection("disconnected"),
     );
   }, []);
+
+  useEffect(() => {
+    getDownloads().then(setJobs, () => {});
+  }, []);
+
+  const hasActive = jobs.some(
+    (item) => item.status === "queued" || item.status === "downloading",
+  );
+
+  useEffect(() => {
+    if (!hasActive) {
+      return;
+    }
+    const timer = window.setInterval(() => {
+      getDownloads().then(setJobs, () => {});
+    }, 2000);
+    return () => window.clearInterval(timer);
+  }, [hasActive]);
 
   async function handleUrlBlur() {
     if (url.trim() === "") {
@@ -51,6 +76,11 @@ export default function App() {
     try {
       const created = await createDownload(url, kind, quality);
       setJob(created);
+      try {
+        setJobs(await getDownloads());
+      } catch {
+        setJobs((prev) => [created, ...prev]);
+      }
     } catch (err) {
       setJob(null);
       if (axios.isAxiosError(err)) {
@@ -145,6 +175,29 @@ export default function App() {
         <p>
           Job {job.id}: {job.status}
         </p>
+      )}
+      {jobs.length > 0 && (
+        <section>
+          <h2>Downloads</h2>
+          <ul>
+            {jobs.map((item) => (
+              <li key={item.id}>
+                <span>
+                  Job {item.id}: {item.status}
+                </span>{" "}
+                <span>{item.progress_percent ?? 0}%</span>
+                {item.error !== null && item.error !== "" && (
+                  <span>{item.error}</span>
+                )}
+                {item.status === "done" && (
+                  <a href={getDownloadFileUrl(item.id)} download>
+                    Download file
+                  </a>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
     </main>
   );

@@ -1,10 +1,10 @@
 from typing import Literal
 
-from fastapi import FastAPI, HTTPException
+from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from .jobs import DownloadCreate, DownloadJob, create_job, get_job
+from .jobs import DownloadCreate, DownloadJob, create_job, get_job, run_job
 
 
 class HealthResponse(BaseModel):
@@ -27,8 +27,12 @@ def get_health() -> HealthResponse:
 
 
 @app.post("/api/downloads")
-def post_download(payload: DownloadCreate) -> DownloadJob:
-    return create_job(payload)
+def post_download(
+    payload: DownloadCreate, background_tasks: BackgroundTasks
+) -> DownloadJob:
+    job = create_job(payload)
+    background_tasks.add_task(run_job, job.id)
+    return job
 
 
 @app.get("/api/downloads/{job_id}")

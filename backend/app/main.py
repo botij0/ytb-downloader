@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Literal
 
-from fastapi import BackgroundTasks, FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -16,10 +16,10 @@ from .jobs import (
     get_job,
     list_jobs,
     recover_incomplete,
-    run_job,
 )
 from .metadata import MetadataUnavailable, VideoMetadata, fetch_metadata
 from .urls import normalize_youtube_url
+from .worker import enqueue, start_worker, stop_worker
 
 
 class HealthResponse(BaseModel):
@@ -30,7 +30,11 @@ class HealthResponse(BaseModel):
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
     recover_incomplete()
-    yield
+    start_worker()
+    try:
+        yield
+    finally:
+        stop_worker()
 
 
 app = FastAPI(lifespan=lifespan)
@@ -49,9 +53,7 @@ def get_health() -> HealthResponse:
 
 
 @app.post("/api/downloads")
-def post_download(
-    payload: DownloadCreate, background_tasks: BackgroundTasks
-) -> DownloadJob:
+def post_download(payload: DownloadCreate) -> DownloadJob:
     try:
         canonical = normalize_youtube_url(payload.url)
     except ValueError as exc:
@@ -59,8 +61,8 @@ def post_download(
     job = create_job(
         DownloadCreate(url=canonical, kind=payload.kind, quality=payload.quality)
     )
-    background_tasks.add_task(run_job, job.id)
-    return job
+    enqueue(job.id)
+    return job.model_copy()
 
 
 @app.get("/api/downloads")

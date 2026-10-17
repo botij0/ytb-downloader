@@ -1,3 +1,5 @@
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Literal
 
@@ -14,7 +16,13 @@ class HealthResponse(BaseModel):
     status: Literal["ok"]
 
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -22,11 +30,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.on_event("startup")
-def ensure_download_dir() -> None:
-    DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 
 @app.get("/api/health")

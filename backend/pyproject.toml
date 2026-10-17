@@ -10,6 +10,8 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "httpx>=0.28.1",
+    "pytest>=8.3.5",
     "ruff>=0.17.1",
 ]
 
@@ -19,3 +21,6 @@ target-version = "py312"
 [tool.ruff.lint.per-file-ignores]
 "app/jobs.py" = ["BLE001"]
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

@@ -1,7 +1,9 @@
+from pathlib import Path
 from typing import Literal
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from .jobs import DownloadCreate, DownloadJob, create_job, get_job, run_job
@@ -41,3 +43,18 @@ def get_download(job_id: str) -> DownloadJob:
     if job is None:
         raise HTTPException(status_code=404, detail="job not found")
     return job
+
+
+@app.get("/api/downloads/{job_id}/file")
+def get_download_file(job_id: str) -> FileResponse:
+    job = get_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="job not found")
+    if job.status != "done" or job.file_path is None:
+        raise HTTPException(status_code=409, detail="download is not ready")
+    path = Path(job.file_path)
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="file not found")
+    response = FileResponse(path)
+    response.headers["content-disposition"] = f'attachment; filename="{path.name}"'
+    return response

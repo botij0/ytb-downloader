@@ -106,7 +106,9 @@ def test_run_job_failed_path(client: TestClient) -> None:
     job = create_job(DownloadCreate(url="https://example.com/broken", kind="video"))
 
     class RaisingEngine:
-        def download(self, url: str, kind: str, quality: str = "best") -> Path:
+        def download(
+            self, url: str, kind: str, quality: str = "best", on_progress=None
+        ) -> Path:
             raise RuntimeError("boom")
 
     result = run_job(job.id, engine=RaisingEngine())
@@ -130,7 +132,9 @@ def test_run_job_done_path(tmp_path: Path) -> None:
     target = tmp_path / "out.bin"
 
     class WritingEngine:
-        def download(self, url: str, kind: str, quality: str = "best") -> Path:
+        def download(
+            self, url: str, kind: str, quality: str = "best", on_progress=None
+        ) -> Path:
             target.write_bytes(b"local-bytes")
             return target
 

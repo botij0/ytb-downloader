@@ -27,6 +27,9 @@ class DownloadJob(BaseModel):
     status: JobStatus
     error: str | None = None
     file_path: str | None = None
+    progress_percent: float | None = None
+    speed_bps: float | None = None
+    eta_secs: float | None = None
 
 
 _jobs: dict[str, DownloadJob] = {}
@@ -56,8 +59,18 @@ def run_job(job_id: str, engine: Downloader | None = None) -> DownloadJob:
 
         engine = YtDlpEngine()
     job.status = "downloading"
+
+    def _on_progress(
+        percent: float | None, speed: float | None, eta: float | None
+    ) -> None:
+        job.progress_percent = percent
+        job.speed_bps = speed
+        job.eta_secs = eta
+
     try:
-        path = engine.download(job.url, job.kind, job.quality)
+        path = engine.download(
+            job.url, job.kind, quality=job.quality, on_progress=_on_progress
+        )
     except Exception as exc:
         job.status = "failed"
         job.error = str(exc) or repr(exc)
@@ -65,4 +78,5 @@ def run_job(job_id: str, engine: Downloader | None = None) -> DownloadJob:
     job.status = "done"
     job.error = None
     job.file_path = str(path)
+    job.progress_percent = 100.0
     return job

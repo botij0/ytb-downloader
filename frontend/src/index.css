@@ -1,22 +1,88 @@
 @import "tailwindcss";
 
-body {
-  font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
-    sans-serif;
-  margin: 0;
-  padding: 2rem 1rem;
+/* Plain custom properties: this repo's Biome CSS parser rejects Tailwind's
+   @theme at-rule, so tokens are declared here and consumed through Tailwind
+   arbitrary values (bg-[var(--plate)], text-[var(--frost)], ...). */
+:root {
+  /* The shelf the unit sits on. */
+  --rack: #cfd2cb;
+  /* Brushed faceplate: the controls live here. */
+  --plate: #f1f2ed;
+  /* Printed lettering, black anodised parts, panel edges. */
+  --ink: #191d1b;
+  /* Secondary print (>= 5.5:1 on the plate). */
+  --steel: #5a625c;
+  /* Dial lamp: primary action and lit meter cells. */
+  --amber: #c0871f;
+  /* Dial glass: the window the machine reports through. */
+  --glass: #101413;
+  --frost: #e6e9e4;
+  --mint: #4fb183;
+  --ember: #e0735a;
+
+  --f-sans:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --f-plate:
+    ui-serif, "New York", "Iowan Old Style", Georgia, "Times New Roman", serif;
+  --f-mono:
+    ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
 }
 
-main {
-  max-width: 36rem;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--rack);
+    color: var(--ink);
+    font-family: var(--f-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
+  }
 }
 
-input {
-  padding: 0.5rem 0.75rem;
-  font-size: 1rem;
+@layer components {
+  /* Nameplate and title: printed serif. */
+  .type-plate {
+    font-family: var(--f-plate);
+  }
+
+  /* Machine output only: job ids, status, duration, percent. */
+  .type-machine {
+    font-family: var(--f-mono);
+  }
+}
+
+/* The one orchestrated moment: a readout lights up when the machine answers. */
+@keyframes readout-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.readout-in {
+  animation: readout-in 200ms ease-out both;
+}
+
+/* Unlayered on purpose: this has to beat the utility classes it silences. */
+@media (prefers-reduced-motion: reduce) {
+  .readout-in {
+    animation: none;
+  }
+
+  .meter-cell {
+    transition: none;
+  }
 }

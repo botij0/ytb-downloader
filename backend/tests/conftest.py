@@ -4,8 +4,8 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from app import jobs
-from app.main import app
+from app import engine as engine_module
+from app import jobs, main
 
 
 class FakeEngine:
@@ -17,6 +17,15 @@ class FakeEngine:
     ) -> Path:
         self.file_path.write_bytes(b"fake-download")
         return self.file_path
+
+
+@pytest.fixture(scope="session", autouse=True)
+def temp_download_dir(tmp_path_factory: pytest.TempPathFactory) -> Iterator[None]:
+    directory = tmp_path_factory.mktemp("downloads")
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(engine_module, "DOWNLOAD_DIR", directory)
+        patch.setattr(main, "DOWNLOAD_DIR", directory)
+        yield
 
 
 @pytest.fixture(autouse=True)
@@ -35,5 +44,5 @@ def fake_engine(
 
 @pytest.fixture()
 def client() -> Iterator[TestClient]:
-    with TestClient(app) as test_client:
+    with TestClient(main.app) as test_client:
         yield test_client

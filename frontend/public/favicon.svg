@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="lamp" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#d99a2b"/>
+      <stop offset="1" stop-color="#c0871f"/>
+    </linearGradient>
+  </defs>
+  <!-- chassis -->
+  <rect width="64" height="64" rx="14" fill="#191d1b"/>
+  <!-- dial glass -->
+  <rect x="5" y="5" width="54" height="54" rx="10" fill="#101413"/>
+  <rect x="5.5" y="5.5" width="53" height="53" rx="9.5" fill="none" stroke="#2b302d"/>
+  <!-- download arrow: play-triangle head into a tray -->
+  <g fill="url(#lamp)" stroke="url(#lamp)" stroke-width="2" stroke-linejoin="round">
+    <path d="M28 15 H36 V26 H45 L32 45 L19 26 H28 Z"/>
+    <rect x="20" y="50" width="24" height="5" rx="2.5" stroke="none"/>
+  </g>
+</svg>

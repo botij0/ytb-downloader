@@ -148,3 +148,28 @@ def test_run_job_done_path(tmp_path: Path) -> None:
     assert result.error is None
     assert result.file_path == str(target)
     assert target.read_bytes() == b"local-bytes"
+
+
+def test_done_job_serves_file_with_unicode_name(
+    client: TestClient, tmp_path: Path
+) -> None:
+    target = tmp_path / "video ＂quoted＂ 日本語.mp4"
+
+    class WritingEngine:
+        def download(
+            self, url: str, kind: str, quality: str = "best", on_progress=None
+        ) -> Path:
+            target.write_bytes(b"unicode-bytes")
+            return target
+
+    engine = WritingEngine()
+    job = create_job(DownloadCreate(url="https://example.com/unicode", kind="video"))
+    run_job(job.id, engine=engine)
+    response = client.get(f"/api/downloads/{job.id}/file")
+
+    assert response.status_code == 200
+    assert response.content == b"unicode-bytes"
+    assert (
+        response.headers["content-disposition"]
+        == "attachment; filename*=utf-8''video%20%EF%BC%82quoted%EF%BC%82%20%E6%97%A5%E6%9C%AC%E8%AA%9E.mp4"
+    )

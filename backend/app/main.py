@@ -88,9 +88,7 @@ def get_download_file(job_id: str) -> FileResponse:
     path = Path(job.file_path)
     if not path.is_file():
         raise HTTPException(status_code=404, detail="file not found")
-    response = FileResponse(path)
-    response.headers["content-disposition"] = f'attachment; filename="{path.name}"'
-    return response
+    return FileResponse(path, filename=path.name)
 
 
 @app.get("/api/metadata")

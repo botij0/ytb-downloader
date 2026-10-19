@@ -1,9 +1,5 @@
 ![ytb-downloader — rack-unit faceplate banner with dial-glass readout](docs/banner.png)
 
-# ytb-downloader
-
-Paste a YouTube URL, preview its metadata, pick video or audio plus quality, then create a download job and fetch the finished file. The backend is FastAPI plus yt-dlp. The frontend is React plus Vite and shows backend health in the header.
-
 ## Prerequisites
 
 - `uv` and Python 3.12 or newer. `backend/pyproject.toml` sets `requires-python = ">=3.12"`.

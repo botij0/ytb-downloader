@@ -2,11 +2,13 @@ services:
   backend:
     build: ./backend
     ports:
-      - "8000:8000"
+      # Host port is configurable; the container always listens on 8000.
+      - "${BACKEND_PORT:-8000}:8000"
     environment:
       YTB_DOWNLOAD_DIR: /data/downloads
       # Allow the containerized frontend origin (plus local dev origins).
-      CORS_ORIGINS: http://localhost:8080,http://127.0.0.1:8080,http://localhost:5173,http://127.0.0.1:5173
+      # The frontend origin follows FRONTEND_PORT unless CORS_ORIGINS is set.
+      CORS_ORIGINS: "${CORS_ORIGINS:-http://localhost:${FRONTEND_PORT:-8080},http://127.0.0.1:${FRONTEND_PORT:-8080},http://localhost:5173,http://127.0.0.1:5173}"
     volumes:
       - downloads:/data/downloads
     restart: unless-stopped
@@ -22,9 +24,11 @@ services:
       context: ./frontend
       args:
         # Baked in at build time: the URL browsers use to reach the API.
-        VITE_API_BASE: http://localhost:8000
+        # Follows BACKEND_PORT unless VITE_API_BASE is set.
+        VITE_API_BASE: "${VITE_API_BASE:-http://localhost:${BACKEND_PORT:-8000}}"
     ports:
-      - "8080:80"
+      # Host port is configurable; nginx always listens on 80.
+      - "${FRONTEND_PORT:-8080}:80"
     depends_on:
       backend:
         condition: service_started

@@ -617,8 +617,8 @@ flowchart LR
 
 | Service | Image/build | Port | Notes |
 | --- | --- | --- | --- |
-| `frontend` | Multi-stage `node:20-alpine` → `nginx:alpine` | `8080:80` | Serves the Vite build; SPA fallback to `index.html`; hashed assets cached for a year |
-| `backend` | `python:3.12-slim`, `uv`, `ffmpeg`, `curl` | `8000:8000` | Runs one uvicorn process; healthcheck calls `/api/health`; restarts unless stopped |
+| `frontend` | Multi-stage `node:20-alpine` → `nginx:alpine` | `${FRONTEND_PORT:-8080}:80` | Serves the Vite build; SPA fallback to `index.html`; hashed assets cached for a year |
+| `backend` | `python:3.12-slim`, `uv`, `ffmpeg`, `curl` | `${BACKEND_PORT:-8000}:8000` | Runs one uvicorn process; healthcheck calls `/api/health`; restarts unless stopped |
 | `downloads` | Named volume | — | Mounted at `/data/downloads`; holds media and `jobs.db` |
 
 `depends_on` only waits for the backend container to start, not for its
@@ -630,8 +630,10 @@ time, so this is sufficient.
 | Variable | Consumed by | Default | Notes |
 | --- | --- | --- | --- |
 | `YTB_DOWNLOAD_DIR` | Backend (`engine.py`) | `./downloads` | Where media and `jobs.db` live; `/data/downloads` in Compose |
-| `CORS_ORIGINS` | Backend (`main.py`) | `http://localhost:5173`, `http://127.0.0.1:5173` | Comma-separated allow list; Compose adds ports 8080 and 5173 |
-| `VITE_API_BASE` | Frontend at **build time** | `http://localhost:8000` | Baked into the bundle; changing it requires a rebuild |
+| `CORS_ORIGINS` | Backend (`main.py`) | `http://localhost:5173`, `http://127.0.0.1:5173` | Comma-separated allow list; Compose defaults it to `FRONTEND_PORT` plus the dev origin on 5173 |
+| `VITE_API_BASE` | Frontend at **build time** | `http://localhost:8000` | Baked into the bundle; Compose defaults it to `BACKEND_PORT`; changing it requires a rebuild |
+| `BACKEND_PORT` | Docker Compose | `8000` | Host port published for the backend; feeds the default `VITE_API_BASE` |
+| `FRONTEND_PORT` | Docker Compose | `8080` | Host port published for the frontend; feeds the default `CORS_ORIGINS` |
 
 ### Local development
 

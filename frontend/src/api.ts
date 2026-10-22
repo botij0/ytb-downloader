@@ -25,7 +25,10 @@ export type VideoMetadata = {
   uploader: string;
 };
 
-const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8000";
+// Empty by default: API calls go to the same origin that served the page.
+// nginx (Docker) and the Vite dev server proxy /api to the backend, so this
+// works from any host/IP without CORS or a baked-in localhost URL.
+const API_BASE = (import.meta.env.VITE_API_BASE ?? "").replace(/\/+$/, "");
 
 export async function getHealth(): Promise<HealthResponse> {
   const response = await axios.get<HealthResponse>(`${API_BASE}/api/health`);

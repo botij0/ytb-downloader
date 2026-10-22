@@ -537,8 +537,9 @@ flowchart LR
 ### Responsibilities
 
 - `api.ts` owns the base URL, request shapes, TypeScript types, and the file URL
-  helper. `API_BASE` comes from `import.meta.env.VITE_API_BASE`, defaulting to
-  `http://localhost:8000`.
+  helper. `API_BASE` comes from `import.meta.env.VITE_API_BASE` and defaults to
+  empty, so requests are same-origin; nginx (Docker) and the Vite dev server
+  proxy `/api` to the backend.
 - `App.tsx` owns all application state and effects. There is no router, global
   store, or data-fetching library.
 - `LevelMeter.tsx` is a pure progress display: 16 discrete cells, ARIA
@@ -605,19 +606,23 @@ flowchart LR
     end
     youtube["YouTube"]
 
-    browser -->|":8080"| nginx
+    browser -->|"FRONTEND_PORT"| nginx
     nginx -->|"HTML / JS / CSS"| browser
-    browser -->|":8000 /api/*"| uvicorn
+    nginx -->|"/api/* proxy"| uvicorn
     uvicorn -->|"media + jobs.db"| volume
     uvicorn -->|"spawns for muxing"| ffmpeg
     uvicorn -->|"HTTPS"| youtube
 ```
 
+The browser only talks to the frontend origin. nginx proxies `/api/*` to
+`http://backend:8000` over the Compose network, so the UI works from any
+LAN IP or hostname without baking an API URL into the bundle.
+
 ### Services
 
 | Service | Image/build | Port | Notes |
 | --- | --- | --- | --- |
-| `frontend` | Multi-stage `node:20-alpine` → `nginx:alpine` | `${FRONTEND_PORT:-8080}:80` | Serves the Vite build; SPA fallback to `index.html`; hashed assets cached for a year |
+| `frontend` | Multi-stage `node:20-alpine` → `nginx:alpine` | `${FRONTEND_PORT:-8080}:80` | Serves the Vite build; SPA fallback to `index.html`; proxies `/api/*` to `backend:8000`; hashed assets cached for a year |
 | `backend` | `python:3.12-slim`, `uv`, `ffmpeg`, `curl` | `${BACKEND_PORT:-8000}:8000` | Runs one uvicorn process; healthcheck calls `/api/health`; restarts unless stopped |
 | `downloads` | Named volume | — | Mounted at `/data/downloads`; holds media and `jobs.db` |
 
@@ -630,10 +635,10 @@ time, so this is sufficient.
 | Variable | Consumed by | Default | Notes |
 | --- | --- | --- | --- |
 | `YTB_DOWNLOAD_DIR` | Backend (`engine.py`) | `./downloads` | Where media and `jobs.db` live; `/data/downloads` in Compose |
-| `CORS_ORIGINS` | Backend (`main.py`) | `http://localhost:5173`, `http://127.0.0.1:5173` | Comma-separated allow list; Compose defaults it to `FRONTEND_PORT` plus the dev origin on 5173 |
-| `VITE_API_BASE` | Frontend at **build time** | `http://localhost:8000` | Baked into the bundle; Compose defaults it to `BACKEND_PORT`; changing it requires a rebuild |
-| `BACKEND_PORT` | Docker Compose | `8000` | Host port published for the backend; feeds the default `VITE_API_BASE` |
-| `FRONTEND_PORT` | Docker Compose | `8080` | Host port published for the frontend; feeds the default `CORS_ORIGINS` |
+| `CORS_ORIGINS` | Backend (`main.py`) | `http://localhost:5173`, `http://127.0.0.1:5173` | Comma-separated allow list; only needed for cross-origin API calls. Compose defaults it to `FRONTEND_PORT` plus the dev origin on 5173 |
+| `VITE_API_BASE` | Frontend at **build time** | empty (same origin) | Baked into the bundle; empty means `/api` on the page's origin, proxied by nginx or Vite. Set an absolute URL only for a separate API origin; requires a rebuild |
+| `BACKEND_PORT` | Docker Compose | `8000` | Host port published for direct backend access; the frontend does not depend on it |
+| `FRONTEND_PORT` | Docker Compose | `8080` | Host port published for the web UI; feeds the default `CORS_ORIGINS` |
 
 ### Local development
 
@@ -646,9 +651,10 @@ npm install
 npm run dev
 ```
 
-Vite serves on `http://localhost:5173`; the backend listens on
-`http://localhost:8000`. Both origins are allowed by the development CORS
-default. To use a different API origin, rebuild with `VITE_API_BASE`.
+Vite serves on `http://localhost:5173` and proxies `/api` to the backend on
+`http://localhost:8000`. API calls are same-origin, so the frontend does not
+depend on CORS in development either. Set `VITE_API_BASE` only to target a
+separate API origin.
 
 ### Container build details
 
@@ -657,8 +663,10 @@ default. To use a different API origin, rebuild with `VITE_API_BASE`.
   --no-install-project`, then copies `app/`. It declares a volume and a
   healthcheck, and runs uvicorn on `0.0.0.0:8000`.
 - The frontend image installs dependencies with `npm ci`, copies `index.html`,
-  the Vite, TypeScript, Vitest, and Biome configs, plus `src/`, builds with the
-  `VITE_API_BASE` build arg, then copies `dist/` and `nginx.conf` into nginx.
+  the Vite, TypeScript, Vitest, and Biome configs, plus `src/`, builds with an
+  optional `VITE_API_BASE` build arg (empty by default), then copies `dist/`
+  and `nginx.conf` into nginx. nginx serves the SPA and proxies `/api/*` to
+  the backend service.
 
 ## Testing and CI
 
@@ -721,8 +729,7 @@ but differs from CI.
 | REST polling | Simple, debuggable, works through proxies and static hosting | Up to two seconds of latency; repeated full-list requests |
 | Sync FastAPI handlers | Straightforward blocking code for `yt-dlp`; FastAPI moves it off the event loop | Each metadata request occupies a thread while `yt-dlp` resolves it |
 | YouTube URL allow list | Prevents arbitrary fetch/SSRF-style use and keeps stored URLs canonical | Only YouTube video URLs are supported |
-| Build-time `VITE_API_BASE` | Frontend can be served as pure static files from any host | API URL changes require a rebuild |
-| Separate frontend and API origins | Frontend and backend scale and deploy independently | CORS must be configured correctly; the backend must be browser-reachable |
+| Same-origin API via nginx | Works from any host/IP without baked URLs or CORS; one browser-facing port | nginx is in the request path; a separate API origin needs `VITE_API_BASE` plus CORS |
 
 ## Operational limits
 

@@ -23,9 +23,9 @@ services:
     build:
       context: ./frontend
       args:
-        # Baked in at build time: the URL browsers use to reach the API.
-        # Follows BACKEND_PORT unless VITE_API_BASE is set.
-        VITE_API_BASE: "${VITE_API_BASE:-http://localhost:${BACKEND_PORT:-8000}}"
+        # Baked in at build time. Empty means same-origin: nginx proxies /api
+        # to the backend, so the app works from any IP or hostname.
+        VITE_API_BASE: "${VITE_API_BASE:-}"
     ports:
       # Host port is configurable; nginx always listens on 80.
       - "${FRONTEND_PORT:-8080}:80"
